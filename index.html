@@ -22,6 +22,7 @@
             background: linear-gradient(135deg, #ffd6e7 0%, #c1c8ff 100%);
             overflow: hidden;
             padding: 20px;
+            touch-action: manipulation;
         }
 
         .container {
@@ -62,7 +63,6 @@
         .card-container {
             position: relative;
             height: 600px;
-            /* Increased height for larger photo */
             display: flex;
             justify-content: center;
             margin-top: 20px;
@@ -71,9 +71,7 @@
         .envelope {
             position: relative;
             width: 400px;
-            /* Slightly wider envelope */
             height: 320px;
-            /* Slightly taller envelope */
             cursor: pointer;
             perspective: 1000px;
             z-index: 20;
@@ -159,6 +157,23 @@
             left: -45px;
         }
 
+        .contents {
+            position: absolute;
+            width: 92%;
+            height: 92%;
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.5s ease 0.4s;
+        }
+
         .letter {
             width: 100%;
             background: linear-gradient(145deg, #f0f9ff, #e6f7ff);
@@ -197,23 +212,19 @@
         /* Updated photo card to large square */
         .photo-card {
             width: 240px;
-            /* Larger size for big square */
             height: 240px;
-            /* Square aspect ratio */
             background: linear-gradient(45deg, #6a11cb, #2575fc);
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
             cursor: grab;
             position: absolute;
             bottom: 20px;
             left: calc(50% - 120px);
-            /* Centered horizontally */
             overflow: hidden;
             z-index: 15;
             user-select: none;
             touch-action: none;
             border: 8px solid white;
             border-radius: 8px;
-            /* Slightly rounded corners */
         }
 
         .photo-card:active {
@@ -224,9 +235,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            /* Ensure image fills the container */
             pointer-events: none;
-            /* Prevent image from blocking drag events */
         }
 
         .photo-card::after {
@@ -334,11 +343,11 @@
 
         @media (max-width: 768px) {
             .header h1 {
-                font-size: 2.8rem;
+                font-size: 2.5rem;
             }
 
             .header p {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
 
             .envelope {
@@ -360,6 +369,30 @@
                 left: calc(50% - 90px);
             }
         }
+
+        /* Audio unlock button for mobile */
+        .audio-unlock {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 30px;
+            color: #6a0dad;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(106, 13, 173, 0.2);
+        }
+
+        .audio-unlock i {
+            color: #ff6b93;
+        }
     </style>
 </head>
 
@@ -375,6 +408,12 @@
     </div>
     <div class="floral floral-4">
         <i class="fas fa-heart"></i>
+    </div>
+
+    <!-- Audio unlock button for mobile devices -->
+    <div class="audio-unlock" id="audioUnlock">
+        <i class="fas fa-volume-mute"></i>
+        <span>Tap to Enable Audio</span>
     </div>
 
     <div class="container">
@@ -420,10 +459,42 @@
             const photoCard = document.getElementById('photoCard');
             const musicControl = document.getElementById('musicControl');
             const birthdaySong = document.getElementById('birthdaySong');
+            const audioUnlock = document.getElementById('audioUnlock');
 
             let isOpen = false;
             let musicPlaying = false;
             let photoTakenOut = false;
+            let audioEnabled = false;
+
+            // Mobile audio unlock solution
+            function enableAudio() {
+                if (audioEnabled) return;
+
+                // Play and pause to unlock audio
+                birthdaySong.play()
+                    .then(() => {
+                        birthdaySong.pause();
+                        birthdaySong.currentTime = 0;
+                        audioEnabled = true;
+                        audioUnlock.style.display = 'none';
+                        console.log('Audio enabled successfully');
+                    })
+                    .catch(error => {
+                        console.error('Audio unlock failed:', error);
+                        alert('Please allow audio playback in your browser settings');
+                    });
+            }
+
+            // Show audio unlock button on mobile devices
+            function checkMobileAudio() {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                    audioUnlock.style.display = 'flex';
+                }
+            }
+
+            // Set up audio unlock button
+            audioUnlock.addEventListener('click', enableAudio);
 
             // Make elements draggable
             makeDraggable(letter);
@@ -435,6 +506,11 @@
                     envelope.classList.add('open');
                     isOpen = true;
                     createConfetti(50);
+
+                    // Try to enable audio on first interaction
+                    if (!audioEnabled) {
+                        enableAudio();
+                    }
                 }
             });
 
@@ -445,10 +521,18 @@
                     photoTakenOut = true;
                     createConfetti(30);
 
-                    // Play music
-                    birthdaySong.play();
-                    musicPlaying = true;
-                    musicControl.innerHTML = '<i class="fas fa-pause"></i>';
+                    // Play music if audio is enabled
+                    if (audioEnabled) {
+                        birthdaySong.play()
+                            .then(() => {
+                                musicPlaying = true;
+                                musicControl.innerHTML = '<i class="fas fa-pause"></i>';
+                            })
+                            .catch(error => {
+                                console.error('Playback failed:', error);
+                                alert('Please tap the play button to start music');
+                            });
+                    }
                 }
             });
 
@@ -458,8 +542,15 @@
                     birthdaySong.pause();
                     musicControl.innerHTML = '<i class="fas fa-music"></i>';
                 } else {
-                    birthdaySong.play();
-                    musicControl.innerHTML = '<i class="fas fa-pause"></i>';
+                    birthdaySong.play()
+                        .then(() => {
+                            musicPlaying = true;
+                            musicControl.innerHTML = '<i class="fas fa-pause"></i>';
+                        })
+                        .catch(error => {
+                            console.error('Playback failed:', error);
+                            alert('Please tap the "Enable Audio" button first');
+                        });
                 }
                 musicPlaying = !musicPlaying;
             });
@@ -548,6 +639,9 @@
                     document.ontouchmove = null;
                 }
             }
+
+            // Check if we need to show the audio unlock button
+            checkMobileAudio();
         });
     </script>
 </body>
